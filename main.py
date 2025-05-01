@@ -12,6 +12,29 @@ class UserFedRL:
         self.model = model
         self.dataset = dataset
 
+        ## Actor, Critic, Mdoel 학습 관련 변수
+        batch_size = 64
+        lr = 1e-3
+        epochs = 100
+
+        self.criterion = nn.MSELoss()
+        self.optimizer = optim.Adam(model.parameters(), lr=lr)
+
+
+    def train():
+        trainActor()
+        trainCritic()
+        trainModel()
+
+    def trainActor():
+        pass
+
+    def trainCritic():
+        pass
+
+    def trainModel():
+        pass
+
 
 class Server:
     def __init__(self, actor, critic, model, datasetNames):
@@ -28,16 +51,6 @@ class Server:
             model = Model(state_dim, action_dim)
             user = UserFedRL(actor, critic, model, dataset)
             self.users.append(user)
-
-
-    def train(self):
-        pass
-
-    def aggregate_actor_parameters():
-        pass
-    
-    def aggregate_critic_parameters():
-        pass
 
 ############################################
 #            Actor, Critic 정의부            #
