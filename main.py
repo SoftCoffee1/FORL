@@ -29,6 +29,17 @@ class Server:
             user = UserFedRL(actor, critic, model, dataset)
             self.users.append(user)
 
+        
+    def train():
+            pass
+
+
+    def aggregate_actor_parameters():
+        pass
+
+    def aggregate_critic_parameters():
+        pass
+
 ############################################
 #            Actor, Critic 정의부            #
 ############################################
