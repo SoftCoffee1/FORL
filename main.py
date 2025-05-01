@@ -31,7 +31,8 @@ class Server:
 
         
     def train():
-            pass
+        self.aggregate_actor_parameters()
+		self.aggregate_critic_parameters()
 
 
     def aggregate_actor_parameters():
