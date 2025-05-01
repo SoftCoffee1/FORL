@@ -29,15 +29,13 @@ class Server:
             user = UserFedRL(actor, critic, model, dataset)
             self.users.append(user)
 
-        
-    def train():
-        self.aggregate_actor_parameters()
-		self.aggregate_critic_parameters()
 
+    def train(self):
+        pass
 
     def aggregate_actor_parameters():
         pass
-
+    
     def aggregate_critic_parameters():
         pass
 
