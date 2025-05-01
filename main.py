@@ -2,7 +2,7 @@ import minari
 import torch.nn as nn
 
 ############################################
-#           User, Server 정의부              #
+#           Client, Server 정의부            #
 ############################################
 
 class UserFedRL:
@@ -14,11 +14,31 @@ class UserFedRL:
 
 
 class Server:
-    def __init__(self, actor, critic, model):
+    def __init__(self, actor, critic, model, datasetNames):
         self.actor = actor
         self.critic = critic
         self.model = model
+        self.users = []
+        
+        # user들 초기화하기 
+        for datasetName in datasetNames:
+            dataset, _, _, _ = getDatasetInfo(datasetName)
+            actor = Actor(state_dim, action_dim, max_action)
+            critic = Critic(state_dim, action_dim)
+            model = Model(state_dim, action_dim)
+            user = UserFedRL(actor, critic, model, dataset)
+            self.users.append(user)
 
+
+        def train():
+            pass
+
+
+        def aggregate_actor_parameters():
+            pass
+
+        def aggregate_critic_parameters():
+            pass
 
 ############################################
 #            Actor, Critic 정의부            #
@@ -132,19 +152,8 @@ if __name__ == '__main__':
     actor = Actor(state_dim, action_dim, max_action)
     critic = Critic(state_dim, action_dim)
     model = Model(state_dim, action_dim)
+    server = Server(actor, critic, model,datasetNames)
 
-    server = Server(actor, critic, model)
-
-    ## Users Initialization ##
-    users = []
-    for datasetName in datasetNames:
-        dataset, _, _, _ = getDatasetInfo(datasetName)
-        actor = Actor(state_dim, action_dim, max_action)
-        critic = Critic(state_dim, action_dim)
-        model = Model(state_dim, action_dim)
-
-        user = UserFedRL(actor, critic, model, dataset)
-        users.append(user)
-
+    server.train()
 
     print("여기까지 옴")
