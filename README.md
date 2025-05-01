@@ -29,6 +29,11 @@ minari list local
 pip install -r requirements.txt
 ```
 
+### 5. Code Execution
+```bash
+python main.py
+```
+
 ## 📚 Reference  
 - [Minari Documentation – Basic Usage](https://minari.farama.org/content/basic_usage/)  
 - [Farama Foundation GitHub](https://github.com/Farama-Foundation)  
