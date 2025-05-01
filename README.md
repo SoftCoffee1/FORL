@@ -29,6 +29,6 @@ minari list local
 pip install -r requirements.txt
 ```
 
-📚 Reference  
+## 📚 Reference  
 - [Minari Documentation – Basic Usage](https://minari.farama.org/content/basic_usage/)  
 - [Farama Foundation GitHub](https://github.com/Farama-Foundation)  
