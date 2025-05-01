@@ -25,6 +25,7 @@ class UserFedRL:
         trainActor()
         trainCritic()
         trainModel()
+        print("hihi")
 
     def trainActor():
         pass
