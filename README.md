@@ -6,14 +6,12 @@ This repository sets up and downloads datasets from [Minari](https://minari.fara
 
 
 ### 0. Virtual Environment Setup
-
-
-### 1. Clone the Minari repository and Initial Setup
 ```bash
 python -m venv venv
 source ./venv/bin/activate
 ```
 
+### 1. Clone the Minari repository and Initial Setup
 ```bash
 git clone https://github.com/Farama-Foundation/Minari.git --single-branch
 cd Minari
