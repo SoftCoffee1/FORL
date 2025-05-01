@@ -1,5 +1,6 @@
 import minari
 import torch.nn as nn
+import copy
 
 ############################################
 #           Client, Server 정의부            #
@@ -11,6 +12,8 @@ class UserFedRL:
         self.critic = critic
         self.model = model
         self.dataset = dataset
+    def train(self, num_epochs, actor, critic):
+        print("training user...")
 
 
 class Server:
@@ -28,6 +31,42 @@ class Server:
             model = Model(state_dim, action_dim)
             user = UserFedRL(actor, critic, model, dataset)
             self.users.append(user)
+    
+    def train(self):
+        print("train start...")
+        
+        self.send_parameters_actor()
+        self.send_parameters_critic()
+        
+        for i, user in enumerate(self.users):
+            print(f"Training user {i}...")
+            user_actor = copy.deepcopy(self.actor)
+            user_critic = copy.deepcopy(self.critic)
+            
+            user.train(10, user_actor, user_critic)
+        
+        print("aggregate start...")
+        self.aggregate_parameters_actor()
+        self.aggregate_parameters_critic()
+        self.human_feedback()
+        print("train end...")
+
+
+    def send_parameters_actor(self):
+        for user in self.users:
+            user.actor.load_state_dict(self.actor.state_dict())
+
+    def send_parameters_critic(self):
+        for user in self.users:
+            user.critic.load_state_dict(self.critic.state_dict())
+            
+    def aggregate_parameters_actor(self):
+        return 0
+    def aggregate_parameters_critic(self):
+        return 0
+    def human_feedback(self):
+        return 0
+        
 
 ############################################
 #            Actor, Critic 정의부            #
@@ -141,6 +180,6 @@ if __name__ == '__main__':
     actor = Actor(state_dim, action_dim, max_action)
     critic = Critic(state_dim, action_dim)
     model = Model(state_dim, action_dim)
-    server = Server(actor, critic, model,datasetNames)
-
+    server = Server(actor, critic,model,datasetNames)
+    server.train()
     print("여기까지 옴")
