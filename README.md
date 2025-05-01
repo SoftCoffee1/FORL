@@ -4,8 +4,31 @@ This repository sets up and downloads datasets from [Minari](https://minari.fara
 
 ## 📦 Environment Setup
 
-### 1. Clone the Minari repository
+### 1. Clone the Minari repository and Initial Setup
 
 ```bash
 git clone https://github.com/Farama-Foundation/Minari.git --single-branch
 cd Minari
+pip install -e ".[all]"
+```
+
+### 2. Download Datasets
+```bash
+minari download mujoco/inverteddoublependulum/expert-v0
+minari download mujoco/inverteddoublependulum/medium-v0
+```
+
+### 3. Check Downloaded Datasets
+```bash
+minari list local
+```
+
+
+### 4. Install additional dependencies
+```bash
+pip install -r requirements.txt
+```
+
+📚 Reference  
+- [Minari Documentation – Basic Usage](https://minari.farama.org/content/basic_usage/)  
+- [Farama Foundation GitHub](https://github.com/Farama-Foundation)  
