@@ -212,6 +212,15 @@ if __name__ == '__main__':
     actor = Actor(state_dim, action_dim, max_action)
     critic = Critic(state_dim, action_dim)
     model = Model(state_dim, action_dim)
+<<<<<<< HEAD
     server = Server(actor,critic,model,datasetNames)
+=======
+<<<<<<< HEAD
+    server = Server(actor, critic, model,datasetNames)
+
+=======
+    server = Server(actor, critic,model,datasetNames)
+>>>>>>> softcoffee
     server.train()
+>>>>>>> dev
     print("여기까지 옴")
