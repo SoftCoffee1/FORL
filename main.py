@@ -1,10 +1,6 @@
 import minari
 import torch.nn as nn
-import torch.nn.functional as F
 import copy
-import numpy as np
-import torch
-
 
 ############################################
 #           Client, Server 정의부            #
@@ -16,10 +12,21 @@ class UserFedRL:
         self.critic = critic
         self.model = model
         self.dataset = dataset
-        self.pol_val = 0
-    
     def train(self, num_epochs, actor, critic):
         print("training user...")
+        self.train_actor()
+        self.train_critic()
+        self.train_model()
+
+    
+    def train_actor(self):
+        pass
+
+    def train_critic(self):
+        pass
+    
+    def train_model(self):
+        pass
 
 
 class Server:
@@ -56,47 +63,20 @@ class Server:
         self.aggregate_parameters_critic()
         self.human_feedback()
         print("train end...")
-    
+
+
     def send_parameters_actor(self):
-        total_train = 0 
         for user in self.users:
-            total_train += np.exp(user.pol_val)
-        for user in self.users:
-            ratio = np.exp(user.pol_val) / total_train
-            self.add_parameters_actor(user, ratio)
+            user.actor.load_state_dict(self.actor.state_dict())
 
     def send_parameters_critic(self):
-        total_train = 0 
         for user in self.users:
-            total_train += np.exp(user.pol_val)
-        for user in self.users:
-            ratio = np.exp(user.pol_val) / total_train
-            self.add_parameters_critic(user, ratio)
-    
+            user.critic.load_state_dict(self.critic.state_dict())
+            
     def aggregate_parameters_actor(self):
-        total_train = 0 
-        for user in self.users:
-            total_train += np.exp(user.pol_val)
-        for user in self.users:
-            ratio = np.exp(user.pol_val) / total_train
-            self.add_parameters_actor(user, ratio)
-    
+        return 0
     def aggregate_parameters_critic(self):
-        total_train = 0 
-        for user in self.users:
-            total_train += np.exp(user.pol_val)
-        for user in self.users:
-            ratio = np.exp(user.pol_val) / total_train
-            self.add_parameters_critic(user, ratio)
-    
-    def add_parameters_actor(self, user, ratio):
-        for server_actor_param, user_actor_param in zip(self.actor.parameters(), user.actor.parameters()):
-            server_actor_param.data = server_actor_param.data + user_actor_param.data * ratio
-    
-    def add_parameters_critic(self, user, ratio):
-        for server_critic_param, user_critic_param in zip(self.critic.parameters(), user.critic.parameters()):
-            server_critic_param.data = server_critic_param.data + user_critic_param.data * ratio
-   
+        return 0
     def human_feedback(self):
         return 0
         
@@ -106,19 +86,20 @@ class Server:
 ############################################
 
 class Actor(nn.Module):
-    def __init__(self, state_dim, action_dim, max_action):
-        super(Actor, self).__init__()
-        self.l1 = nn.Linear(state_dim, 256)
-        self.l2 = nn.Linear(256, 256)
-        self.l3 = nn.Linear(256, action_dim)
+	def __init__(self, state_dim, action_dim, max_action):
+		super(Actor, self).__init__()
 
-        self.max_action = max_action
+		self.l1 = nn.Linear(state_dim, 256)
+		self.l2 = nn.Linear(256, 256)
+		self.l3 = nn.Linear(256, action_dim)
+		
+		self.max_action = max_action
 		
 
-    def forward(self, state):
-        a = F.relu(self.l1(state))
-        a = F.relu(self.l2(a))
-        return self.max_action * torch.tanh(self.l3(a))
+	def forward(self, state):
+		a = F.relu(self.l1(state))
+		a = F.relu(self.l2(a))
+		return self.max_action * torch.tanh(self.l3(a))
 
 
 class Critic(nn.Module):
@@ -163,23 +144,31 @@ class Critic(nn.Module):
 #                Model 정의부                #
 ############################################
 class Model(nn.Module):
-    def __init__(self, state_dim, action_dim, hidden_dim=256):
+    def __init__(self, state_dim, action_dim, hidden_dim=256, hasRewardOutput=False):
         super(Model, self).__init__()
+        self.hasRewardOutput = hasRewardOutput
         self.net = nn.Sequential(
             nn.Linear(state_dim + action_dim, hidden_dim),
             nn.ReLU(),
             nn.Linear(hidden_dim, hidden_dim),
             nn.ReLU(),
-            nn.Linear(hidden_dim, state_dim + 1)  # next state + reward
+            if self.hasRewardOutput:
+                nn.Linear(hidden_dim, state_dim + 1)  # next state + reward
+            else:
+                nn.Linear(hidden_dim, state_dim)  # next state
         )
 
     def forward(self, state, action):
         x = torch.cat([state, action], dim=-1)
         output = self.net(x)
-        next_state = output[:, :-1]
-        reward = output[:, -1]
-        return next_state, reward
 
+        if self.hasRewardOutput:
+            next_state = output[:, :-1]
+            reward = output[:, -1]
+            return next_state, reward
+
+        else:
+            return output
 
 
 def getDatasetInfo(datasetName):
@@ -212,15 +201,6 @@ if __name__ == '__main__':
     actor = Actor(state_dim, action_dim, max_action)
     critic = Critic(state_dim, action_dim)
     model = Model(state_dim, action_dim)
-<<<<<<< HEAD
     server = Server(actor,critic,model,datasetNames)
-=======
-<<<<<<< HEAD
-    server = Server(actor, critic, model,datasetNames)
-
-=======
-    server = Server(actor, critic,model,datasetNames)
->>>>>>> softcoffee
     server.train()
->>>>>>> dev
     print("여기까지 옴")
