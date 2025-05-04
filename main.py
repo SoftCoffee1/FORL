@@ -1,5 +1,7 @@
 import minari
+import torch
 import torch.nn as nn
+import torch.optim as optim
 import copy
 
 ############################################
@@ -12,6 +14,12 @@ class UserFedRL:
         self.critic = critic
         self.model = model
         self.dataset = dataset
+        self.dataloader = torch.utils.data.DataLoader(
+        SequenceTransitionDataset(dataset, h_step=3),
+        batch_size=32,
+        shuffle=True
+    )
+
     def train(self, num_epochs, actor, critic):
         print("training user...")
         self.train_actor()
@@ -25,8 +33,46 @@ class UserFedRL:
     def train_critic(self):
         pass
     
-    def train_model(self):
-        pass
+    def train_model(self, h_step=3):
+        
+        # optimizer = optim.Adam(model.parameters(), lr=lr)
+        # loss_fn = nn.MSELoss()
+
+        print(len(self.dataset[0].observations[0]))
+        print(self.dataset[0].actions[0])
+
+        # # 학습 루프
+        # for epoch in range(num_epochs):
+        #     total_loss = 0.0
+
+        #     for i in range(0, len(inputs), batch_size):
+        #         batch_inputs = inputs[i:i+batch_size]
+        #         batch_targets = targets[i:i+batch_size]
+
+        #         # 텐서 변환
+        #         s1_batch = torch.stack([item[0] for item in batch_inputs]).to(device)
+        #         a1_batch = torch.stack([item[1] for item in batch_inputs]).to(device)
+        #         a2_batch = torch.stack([item[2] for item in batch_inputs]).to(device)
+        #         s2_batch = torch.stack([item[0] for item in batch_targets]).to(device)
+        #         s3_batch = torch.stack([item[1] for item in batch_targets]).to(device)
+
+        #         optimizer.zero_grad()
+
+        #         # state2 예측
+        #         pred_s2 = model(s1_batch, a1_batch)
+        #         # state3 예측: 예측한 state2를 입력으로 다시 사용
+        #         pred_s3 = model(pred_s2.detach(), a2_batch)  # detach()로 역전파 경로 분리
+
+        #         loss_s2 = loss_fn(pred_s2, s2_batch)
+        #         loss_s3 = loss_fn(pred_s3, s3_batch)
+        #         loss = loss_s2 + loss_s3
+
+        #         loss.backward()
+        #         optimizer.step()
+
+        #         total_loss += loss.item()
+
+        #     print(f"[Epoch {epoch+1}] Loss: {total_loss:.4f}")
 
 
 class Server:
@@ -61,7 +107,7 @@ class Server:
         print("aggregate start...")
         self.aggregate_parameters_actor()
         self.aggregate_parameters_critic()
-        self.aggregate_parameter_model()
+        self.aggregate_parameters_model()
         self.human_feedback()
         print("train end...")
 
@@ -150,16 +196,20 @@ class Model(nn.Module):
     def __init__(self, state_dim, action_dim, hidden_dim=256, hasRewardOutput=False):
         super(Model, self).__init__()
         self.hasRewardOutput = hasRewardOutput
-        self.net = nn.Sequential(
+
+        layers = [
             nn.Linear(state_dim + action_dim, hidden_dim),
             nn.ReLU(),
             nn.Linear(hidden_dim, hidden_dim),
-            nn.ReLU(),
-            if self.hasRewardOutput:
-                nn.Linear(hidden_dim, state_dim + 1)  # next state + reward
-            else:
-                nn.Linear(hidden_dim, state_dim)  # next state
-        )
+            nn.ReLU()
+        ]
+
+        if self.hasRewardOutput:
+            layers.append(nn.Linear(hidden_dim, state_dim + 1))  # next state + reward
+        else:
+            layers.append(nn.Linear(hidden_dim, state_dim))      # next state only
+
+        self.net = nn.Sequential(*layers)
 
     def forward(self, state, action):
         x = torch.cat([state, action], dim=-1)
@@ -169,9 +219,44 @@ class Model(nn.Module):
             next_state = output[:, :-1]
             reward = output[:, -1]
             return next_state, reward
-
         else:
             return output
+
+############################################
+#              DataLoader 정의부             #
+############################################
+class SequenceTransitionDataset(torch.utils.data.Dataset):
+    def __init__(self, dataset, h_step):
+        self.dataset = dataset
+        self.h_step = h_step
+        self.samples = []
+
+        for episode_id in range(len(dataset)):
+            episode_length = len(dataset[episode_id].observations)
+            # index를 설정: 마지막 h_step+1개는 예측 불가능하므로 제외
+            for idx in range(episode_length - h_step):
+                self.samples.append((episode_id, idx))
+
+    def __len__(self):
+        return len(self.samples)
+
+    def __getitem__(self, idx):
+        episode_id, index = self.samples[idx]
+        state_t = self.dataset[episode_id].observations[index]
+
+        action_seq = [
+            self.dataset[episode_id].actions[index + i] for i in range(self.h_step)
+        ]
+        next_state_seq = [
+            self.dataset[episode_id].observations[index + i + 1] for i in range(self.h_step)
+        ]
+
+        action_seq = torch.cat(action_seq, dim=-1)        # (h * action_dim,)
+        next_state_seq = torch.cat(next_state_seq, dim=-1)  # (h * state_dim,)
+
+        return torch.tensor(state_t, dtype=torch.float32), action_seq, next_state_seq
+
+
 
 
 def getDatasetInfo(datasetName):
