@@ -61,6 +61,7 @@ class Server:
         print("aggregate start...")
         self.aggregate_parameters_actor()
         self.aggregate_parameters_critic()
+        self.aggregate_parameter_model()
         self.human_feedback()
         print("train end...")
 
@@ -76,6 +77,8 @@ class Server:
     def aggregate_parameters_actor(self):
         return 0
     def aggregate_parameters_critic(self):
+        return 0
+    def aggregate_parameters_model(self):
         return 0
     def human_feedback(self):
         return 0
