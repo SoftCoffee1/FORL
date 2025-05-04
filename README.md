@@ -37,6 +37,7 @@ pip install torch Pillow
 
 ### 5. Code Execution
 ```bash
+cd ../
 python main.py
 ```
 
