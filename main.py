@@ -73,8 +73,11 @@ class UserFedRL:
             total_loss = 0.0
             batch_count = 0
 
+            print(f"length of dataloaer : {len(self.dataloader)}")
+
             for s0, a_seq, s_seq in self.dataloader:
                 batch_count += 1
+                print(f"batch_count : {batch_count}")
                 s0 = s0.to(device)  # (batch_size, state_dim)
                 a_seq = a_seq.to(device)  # (batch_size, h * action_dim)
                 s_seq = s_seq.to(device)  # (batch_size, h * state_dim)
@@ -110,7 +113,13 @@ class UserFedRL:
                 if epoch == 0 and batch_count == 1:
                     print(f"pred_s_seq: {pred_s_seq.shape}, s_seq: {s_seq.shape}")
 
-                loss = loss_fn(pred_s_seq, s_seq)
+                ## difference의 difference를 계산하는 방식(https://arxiv.org/pdf/2109.05549)
+                loss = 0.0
+                for i in range(1, h_step):
+                    pred_s_diff = pred_s_seq[:, i] - pred_s_seq[:, i - 1]
+                    s_diff = s_seq[:, i] - s_seq[:, i - 1]
+                    loss += loss_fn(pred_s_diff, s_diff)
+
                 loss.backward()
                 optimizer.step()
 
