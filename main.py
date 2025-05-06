@@ -20,7 +20,10 @@ class UserFedRL:
 
         # 데이터셋을 직접 생성하여 차원 확인
         self.seq_dataset = SequenceTransitionDataset(dataset, h_step=3)
-        print(f"Dataset created with {len(self.seq_dataset)} samples")
+        print(f"Sequence Dataset created with {len(self.seq_dataset)} samples")
+
+        self.stateAction_dataset = StateActionDataset(dataset)
+        print(f"State Action Dataset created with {len(self.seq_dataset)} samples")
 
         # 데이터로더 생성
         self.dataloader = torch.utils.data.DataLoader(
@@ -30,24 +33,65 @@ class UserFedRL:
             drop_last=True,  # 배치 크기에 맞지 않는 마지막 배치 무시
         )
 
-    def train(self, h_step=3, num_epochs=10, lr=1e-3, device="cpu"):
+        # 데이터로더 생성
+        self.stateActionDataloader = torch.utils.data.DataLoader(
+            self.stateAction_dataset,
+            batch_size=32,
+            shuffle=True,
+            drop_last=True,  # 배치 크기에 맞지 않는 마지막 배치 무시
+        )
+
+    def train(
+        self,
+        server_critic,
+        h_step=3,
+        num_epochs=10,
+        lr=1e-3,
+        device="cpu",
+    ):
         print("Training local user components...")
         self.train_actor()
-        self.train_critic()
+        self.train_critic(server_critic, num_epochs=num_epochs, lr=lr, device=device)
         self.train_model(h_step=h_step, num_epochs=num_epochs, lr=lr, device=device)
 
     def train_actor(self):
         print("Training actor... (Not implemented yet)")
         pass
 
-    def train_critic(self):
+    def train_critic(self, server_critic, num_epochs=10, lr=1e-3, device="cpu"):
 
-        for s0, a_seq, s_seq in self.dataloader:
-            # Get current Q estimates
-            current_Q1, current_Q2 = self.critic(state, action)
-            with torch.no_grad():
-                fed_Q1, fed_Q2 = server_critic(state, action)
-        pass
+        self.critic.to(device)
+        optimizer = torch.optim.Adam(self.model.parameters(), lr=lr)
+        loss_fn = nn.MSELoss()
+
+        print(f"length : {len(self.stateActionDataloader)}")
+
+        for epoch in range(num_epochs):
+            total_loss = 0.0
+            batch_count = 0
+            for state, action in self.stateActionDataloader:
+                print(f"batch_count : {batch_count}")
+                batch_count += 1
+
+                # 현재 Q값 추정
+                current_Q1, current_Q2 = self.critic(state, action)
+
+                with torch.no_grad():
+                    fed_Q1, fed_Q2 = server_critic(state, action)
+
+                # 여기서 loss 계산 및 역전파 등의 로직 추가
+                loss = F.mse_loss(current_Q1, fed_Q1) + F.mse_loss(current_Q2, fed_Q2)
+                optimizer.zero_grad()
+                loss.backward()
+                optimizer.step()
+
+                total_loss += loss.item()
+
+            print(
+                f"[User Critic Epoch {epoch+1}] Loss: {total_loss:.4f}, Batches: {batch_count}"
+            )
+
+        print("Training user critic completed.")
 
     def train_model(self, h_step=3, num_epochs=10, lr=1e-3, device="cpu"):
         print("Training local model...")
@@ -134,7 +178,7 @@ class UserFedRL:
                 f"[User Model Epoch {epoch+1}] Loss: {total_loss:.4f}, Batches: {batch_count}"
             )
 
-        print("Training user actor and critic completed.")
+        print("Training user model completed.")
 
 
 class Server:
@@ -180,7 +224,13 @@ class Server:
 
             for i, user in enumerate(self.users):
                 print(f"Training user {i}...")
-                user.train(h_step=3, num_epochs=10, lr=1e-3, device="cpu")
+                user.train(
+                    server_critic=self.critic,
+                    h_step=3,
+                    num_epochs=10,
+                    lr=1e-3,
+                    device="cpu",
+                )
 
             print("aggregate start...")
             self.aggregate_parameters()
@@ -395,10 +445,8 @@ class StateActionDataset(torch.utils.data.Dataset):
 
         if self.has_observations:
             state = self.dataset[episode_id].observations[index]
-            next_state = self.dataset[episode_id].observations[index + 1]
         else:
             state = self.dataset[episode_id].observation[index]
-            next_state = self.dataset[episode_id].observation[index + 1]
 
         action = self.dataset[episode_id].actions[index]
 
