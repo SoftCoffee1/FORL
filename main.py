@@ -41,7 +41,12 @@ class UserFedRL:
         pass
 
     def train_critic(self):
-        print("Training actor... (Not implemented yet)")
+
+        for s0, a_seq, s_seq in self.dataloader:
+            # Get current Q estimates
+            current_Q1, current_Q2 = self.critic(state, action)
+            with torch.no_grad():
+                fed_Q1, fed_Q2 = server_critic(state, action)
         pass
 
     def train_model(self, h_step=3, num_epochs=10, lr=1e-3, device="cpu"):
@@ -356,6 +361,52 @@ class Model(nn.Module):
                 f"action: {type(action)}, shape: {action.shape if hasattr(action, 'shape') else 'unknown'}"
             )
             raise
+
+
+class StateActionDataset(torch.utils.data.Dataset):
+    def __init__(self, dataset):
+        self.dataset = dataset
+        self.samples = []
+
+        # 구조 파악
+        if hasattr(dataset[0], "observations"):
+            self.has_observations = True
+        elif hasattr(dataset[0], "observation"):
+            self.has_observations = False
+        else:
+            raise ValueError(
+                "Dataset must have 'observations' or 'observation' attribute"
+            )
+
+        for episode_id in range(len(dataset)):
+            if self.has_observations:
+                episode_len = len(dataset[episode_id].observations)
+            else:
+                episode_len = len(dataset[episode_id].observation)
+
+            for idx in range(episode_len - 1):  # 마지막은 다음 상태가 없음
+                self.samples.append((episode_id, idx))
+
+    def __len__(self):
+        return len(self.samples)
+
+    def __getitem__(self, idx):
+        episode_id, index = self.samples[idx]
+
+        if self.has_observations:
+            state = self.dataset[episode_id].observations[index]
+            next_state = self.dataset[episode_id].observations[index + 1]
+        else:
+            state = self.dataset[episode_id].observation[index]
+            next_state = self.dataset[episode_id].observation[index + 1]
+
+        action = self.dataset[episode_id].actions[index]
+
+        # numpy → torch 변환
+        state = torch.tensor(state, dtype=torch.float32)
+        action = torch.tensor(action, dtype=torch.float32)
+
+        return state, action
 
 
 class SequenceTransitionDataset(torch.utils.data.Dataset):
